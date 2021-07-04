@@ -1,6 +1,4 @@
-#include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <Adafruit_ssd1306syp.h>
@@ -12,6 +10,66 @@ int hours;
 Adafruit_ssd1306syp display(SDA_PIN, SCL_PIN);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "ntp1.aliyun.com", 3600, 60000); //ntp服务器设置，阿里云  
+void SmartConfig()
+{
+  WiFi.mode(WIFI_STA);
+  Serial.println("\r\nWait for Smartconfig...");
+  WiFi.beginSmartConfig();
+  while (1)
+  {
+    Serial.print(".");
+    delay(500); // wait for a second
+    if (WiFi.smartConfigDone())
+    {
+      Serial.println("SmartConfig Success");
+      Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
+      Serial.printf("PSW:%s\r\n", WiFi.psk().c_str());
+      break;
+    }
+  }
+}
+bool AutoConfig()
+{
+  WiFi.begin();
+  //如果觉得时间太长可改
+  for (int i = 0; i < 10; i++)
+  {
+    int wstatus = WiFi.status();
+    if (wstatus == WL_CONNECTED)
+    {
+      Serial.println("WIFI SmartConfig Success");
+      Serial.printf("SSID:%s", WiFi.SSID().c_str());
+      Serial.printf(", PSW:%s\r\n", WiFi.psk().c_str());
+      Serial.print("LocalIP:");
+      Serial.print(WiFi.localIP());
+      Serial.print(" ,GateIP:");
+      Serial.println(WiFi.gatewayIP());
+
+      return true;
+    }
+    else
+    {
+      Serial.print("WIFI AutoConfig Waiting......");
+      Serial.println(wstatus);
+
+      display.clear();
+      display.setTextSize(2);
+      display.setCursor(10, 10);
+      display.println("AutoConfig Waiting");
+      display.update();
+      delay(1000);
+    }
+  }
+  Serial.println("WIFI AutoConfig Faild!");
+
+  display.clear();
+  display.setTextSize(2);
+  display.setCursor(10, 10);
+  display.println("EspTouch");
+  display.update();
+  delay(500);
+  return false;
+}
 void timedisplay()
 {
   display.clear();
@@ -21,12 +79,7 @@ void timedisplay()
   display.print("IP:");
   display.setCursor(25, 0);
   display.println(WiFi.localIP());
-  display.print(" ");
-  display.print(Soc_cont(voltage));
-  display.println("%");
   display.setTextSize(2);
-  display.setCursor(10, 20);
-  display.print(response.substring(13, 23));
   display.setCursor(20, 40);
   display.print(timeClient.getFormattedTime());
   display.update();
